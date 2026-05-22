@@ -43,7 +43,7 @@ public abstract class VersionInfoBaseHandler extends AbstractCallbackHandler {
         
         if (!now.equals(latest)) {
             common += String.format("一键脚本：%s\n更新内容：\n%s",
-                    "bash <(wget -qO- https://github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh)",
+                    "bash <(curl -fsSL https://raw.githubusercontent.com/ChiangJingYing/oci-helper/master/install.sh)",
                     CommonUtils.getLatestVersionBody());
             
             keyboard.add(new InlineKeyboardRow(

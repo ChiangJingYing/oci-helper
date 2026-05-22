@@ -32,8 +32,8 @@ public class CreateInstanceParams {
     private Integer createNumbers;
     @NotBlank(message = "系统类型不能为空")
     private String operationSystem;
-    @NotBlank(message = "root密码不能为空")
     private String rootPassword;
+    private String publicKey;
 
     private boolean joinChannelBroadcast = true;
 

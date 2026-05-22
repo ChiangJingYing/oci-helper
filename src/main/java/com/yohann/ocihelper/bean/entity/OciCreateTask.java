@@ -43,6 +43,8 @@ public class OciCreateTask implements Serializable {
 
     private String rootPassword;
 
+    private String publicKey;
+
     private String operationSystem;
 
     private LocalDateTime createTime;

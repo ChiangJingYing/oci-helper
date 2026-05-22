@@ -172,7 +172,7 @@ public class InstanceServiceImpl implements IInstanceService {
                         instanceDetail.getDisk(),
                         instanceDetail.getShape(),
                         instanceDetail.getPublicIp(),
-                        instanceDetail.getRootPassword(),
+                        StrUtil.blankToDefault(instanceDetail.getRootPassword(), "未设置（请使用SSH公钥登录）"),
                         currentCount,
                         createTask == null ? "未知" : CommonUtils.getTimeDifference(createTask.getCreateTime())
                 );
