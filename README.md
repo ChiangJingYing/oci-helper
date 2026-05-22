@@ -45,7 +45,7 @@
 ## 💻一键 docker-compose 部署或更新
 
 ```bash
-bash <(wget -qO- https://github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ChiangJingYing/oci-helper/master/install.sh)
 ```
 > 此命令也可以用于更新镜像并重启容器，不会删除已有的配置。
 
@@ -173,13 +173,13 @@ mkdir -p /app/oci-helper/keys && cd /app/oci-helper
 
 ### 2. 下载文件
 
-下载 [Releases](https://github.com/Yohann0617/oci-helper/releases/tag/deploy) 中的`application.yml`、`oci-helper.db`、`docker-compose.yml`以及**最新 Release 版本**的`sh_oci-helper_install.sh`这4个文件到`/app/oci-helper`目录下，并修改`application.yml`部分配置。
-`sh_oci-helper_install.sh`是部署脚本，可自行修改内容，执行之前记得先`chmod +x /app/oci-helper/sh_oci-helper_install.sh`。
+下载 [Releases](https://github.com/Yohann0617/oci-helper/releases/tag/deploy) 中的`application.yml`、`oci-helper.db`到`/app/oci-helper`目录下，并修改`application.yml`部分配置。
+也可以直接使用仓库根目录中的 `install.sh` / `sh_oci-helper_install.sh` 部署脚本。
 
 ### 3. docker-compose 部署或更新
 
 ```bash
-chmod +x /app/oci-helper/sh_oci-helper_install.sh && cd /app/oci-helper && ./sh_oci-helper_install.sh
+chmod +x /app/oci-helper/install.sh && cd /app/oci-helper && ./install.sh
 ```
 
 > 此脚本也可以用于更新镜像并重启容器，不会删除已有的配置。

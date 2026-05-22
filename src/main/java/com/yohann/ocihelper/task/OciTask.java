@@ -143,6 +143,7 @@ public class OciTask implements ApplicationRunner {
         sqLiteHelper.addColumnIfNotExists("oci_user", "tenant_create_time", "datetime NULL");
         sqLiteHelper.addColumnIfNotExists("oci_user", "plan_type", "VARCHAR(32) NULL");
         sqLiteHelper.addColumnIfNotExists("oci_create_task", "paused", "INTEGER DEFAULT 0");
+        sqLiteHelper.addColumnIfNotExists("oci_create_task", "public_key", "TEXT NULL");
         sqLiteHelper.addColumnIfNotExists("oci_user", "proxy", "VARCHAR(256) NULL");
         sqLiteHelper.addColumnIfNotExists("oci_user", "account_status", "VARCHAR(16) NULL");
         virtualExecutor.execute(() -> {
@@ -289,7 +290,7 @@ public class OciTask implements ApplicationRunner {
                 if (!isPushedLatestVersion) {
                     sysService.sendMessage(String.format("🔔【oci-helper】版本更新啦！！！\n\n当前版本：%s\n最新版本：%s\n一键脚本：%s\n\n更新内容：\n%s",
                             now, latest,
-                            "bash <(wget -qO- https://github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh)",
+                            "bash <(curl -fsSL https://raw.githubusercontent.com/ChiangJingYing/oci-helper/master/install.sh)",
                             CommonUtils.getLatestVersionBody()));
                     isPushedLatestVersion = true;
                 }

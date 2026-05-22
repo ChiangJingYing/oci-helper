@@ -28,6 +28,7 @@ public class SysUserDTO {
     private Long interval = 60L;
     private volatile int createNumbers = 0;
     private String rootPassword;
+    private String publicKey;
     private String operationSystem = "Ubuntu";
     private List<CloudInstance> instanceList;
     private boolean joinChannelBroadcast = true;
