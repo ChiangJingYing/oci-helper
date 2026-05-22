@@ -242,6 +242,7 @@ public class OciServiceImpl implements IOciService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void createInstance(CreateInstanceParams params) {
+        validateLaunchCredentials(params.getRootPassword(), params.getPublicKey());
         String taskId = IdUtil.randomUUID();
         OciCreateTask ociCreateTask = OciCreateTask.builder()
                 .id(taskId)
@@ -254,6 +255,7 @@ public class OciServiceImpl implements IOciService {
                 .createNumbers(params.getCreateNumbers())
                 .operationSystem(params.getOperationSystem())
                 .rootPassword(params.getRootPassword())
+                .publicKey(params.getPublicKey())
                 .operationSystem(params.getOperationSystem())
                 .build();
         createTaskService.save(ociCreateTask);
@@ -267,6 +269,7 @@ public class OciServiceImpl implements IOciService {
         sysUserDTO.setCreateNumbers(params.getCreateNumbers());
         sysUserDTO.setOperationSystem(params.getOperationSystem());
         sysUserDTO.setRootPassword(params.getRootPassword());
+        sysUserDTO.setPublicKey(params.getPublicKey());
         sysUserDTO.setJoinChannelBroadcast(params.isJoinChannelBroadcast());
         addTask(CommonUtils.CREATE_TASK_PREFIX + taskId, () ->
                         execCreate(sysUserDTO, sysService, instanceService, createTaskService),
@@ -280,7 +283,8 @@ public class OciServiceImpl implements IOciService {
                 Float.parseFloat(params.getMemory()),
                 Long.valueOf(params.getDisk()),
                 params.getCreateNumbers(),
-                params.getRootPassword());
+                StrUtil.blankToDefault(params.getRootPassword(),
+                        StrUtil.isNotBlank(params.getPublicKey()) ? "已配置SSH公钥登录" : "未设置"));
 
         sysService.sendMessage(beginCreateMsg);
     }
@@ -490,6 +494,7 @@ public class OciServiceImpl implements IOciService {
                 sysUserDTO.setCreateNumbers(task.getCreateNumbers());
                 sysUserDTO.setOperationSystem(task.getOperationSystem());
                 sysUserDTO.setRootPassword(task.getRootPassword());
+                sysUserDTO.setPublicKey(task.getPublicKey());
                 addTask(CommonUtils.CREATE_TASK_PREFIX + task.getId(),
                         () -> execCreate(sysUserDTO, sysService, instanceService, createTaskService),
                         0, task.getInterval(), TimeUnit.SECONDS);
@@ -520,6 +525,12 @@ public class OciServiceImpl implements IOciService {
                     throw new OciException(-1, "创建开机任务失败");
                 }
             }, delaySeconds, TimeUnit.SECONDS);
+        }
+    }
+
+    private void validateLaunchCredentials(String rootPassword, String publicKey) {
+        if (StrUtil.isBlank(rootPassword) && StrUtil.isBlank(publicKey)) {
+            throw new OciException(-1, "root密码和SSH公钥不能同时为空");
         }
     }
 

@@ -368,7 +368,9 @@ public class OracleInstanceFetcher implements Closeable {
                                     user.getUsername(), user.getOciCfg().getRegion(), user.getArchitecture(), vcn.getDisplayName(), subnet.getDisplayName());
                         }
 
-                        String cloudInitScript = CommonUtils.getPwdShell(user.getRootPassword());
+                        String cloudInitScript = StrUtil.isBlank(user.getRootPassword())
+                                ? null
+                                : CommonUtils.getPwdShell(user.getRootPassword());
                         launchInstanceDetails = createLaunchInstanceDetails(
                                 compartmentId, availableDomain,
                                 shape, image,
@@ -1273,7 +1275,13 @@ public class OracleInstanceFetcher implements Closeable {
             String script,
             SysUserDTO user) {
         String instanceName = "instance-" + LocalDateTime.now().format(CommonUtils.DATETIME_FMT_PURE);
-        String encodedCloudInitScript = Base64.getEncoder().encodeToString(script.getBytes());
+        Map<String, String> metadata = new HashMap<>();
+        if (StrUtil.isNotBlank(script)) {
+            metadata.put("user_data", Base64.getEncoder().encodeToString(script.getBytes()));
+        }
+        if (StrUtil.isNotBlank(user.getPublicKey())) {
+            metadata.put("ssh_authorized_keys", user.getPublicKey().trim());
+        }
         return LaunchInstanceDetails.builder()
                 .availabilityDomain(availabilityDomain.getName())
                 .compartmentId(compartmentId)
@@ -1284,7 +1292,7 @@ public class OracleInstanceFetcher implements Closeable {
                         .imageId(image.getId())
                         //.kmsKeyId((kmsKeyId == null || "".equals(kmsKeyId)) ? null :kmsKeyId)
                         .build())
-                .metadata(Collections.singletonMap("user_data", encodedCloudInitScript))
+                .metadata(metadata.isEmpty() ? null : metadata)
 //                .extendedMetadata(extendedMetadata)
                 .shape(shape.getShape())
                 .createVnicDetails(CreateVnicDetails.builder()
