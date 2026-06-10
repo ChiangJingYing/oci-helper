@@ -10,6 +10,8 @@ import com.yohann.ocihelper.bean.params.oci.task.CreateTaskPageParams;
 import com.yohann.ocihelper.bean.params.oci.task.PauseCreateParams;
 import com.yohann.ocihelper.bean.params.oci.task.StopChangeIpParams;
 import com.yohann.ocihelper.bean.params.oci.task.StopCreateParams;
+import com.yohann.ocihelper.bean.params.oci.task.UpdateCreateTaskBatchParams;
+import com.yohann.ocihelper.bean.params.oci.task.UpdateCreateTaskParams;
 import com.yohann.ocihelper.bean.params.oci.volume.UpdateBootVolumeCfgParams;
 import com.yohann.ocihelper.bean.response.oci.task.CreateTaskRsp;
 import com.yohann.ocihelper.bean.response.oci.cfg.OciCfgDetailsRsp;
@@ -45,6 +47,10 @@ public interface IOciService {
 
     void stopCreateBatch(IdListParams params);
 
+    void updateCreateTask(UpdateCreateTaskParams params);
+
+    void updateCreateTaskBatch(UpdateCreateTaskBatchParams params);
+
     void pauseCreateBatch(PauseCreateParams params);
 
     void resumeCreateBatch(PauseCreateParams params);
@@ -67,7 +73,6 @@ public interface IOciService {
 
     void updateInstanceName(UpdateInstanceNameParams params);
 
-    /** 更新或删除实例 freeformTags 中的 root 密码标签 */
     void updateInstanceRootPassword(UpdateInstanceRootPasswordParams params);
 
     void updateInstanceCfg(UpdateInstanceCfgParams params);
@@ -78,7 +83,6 @@ public interface IOciService {
 
     void updateCfgName(UpdateCfgNameParams params);
 
-    /** 批量更新配置专属代理（传空则清除，降级使用全局代理） */
     void updateCfgProxy(UpdateCfgProxyParams params);
 
     void refreshPlanTypeBatch(IdListParams params);

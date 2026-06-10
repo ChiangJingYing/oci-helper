@@ -14,6 +14,7 @@
         oct.interval,
         oct.create_numbers,
         oct.operation_system,
+        oct.root_password,
         oct.create_time,
         oct.paused,
         ou.username

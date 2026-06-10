@@ -44,6 +44,8 @@ import com.yohann.ocihelper.bean.params.oci.task.CreateTaskPageParams;
 import com.yohann.ocihelper.bean.params.oci.task.PauseCreateParams;
 import com.yohann.ocihelper.bean.params.oci.task.StopChangeIpParams;
 import com.yohann.ocihelper.bean.params.oci.task.StopCreateParams;
+import com.yohann.ocihelper.bean.params.oci.task.UpdateCreateTaskBatchParams;
+import com.yohann.ocihelper.bean.params.oci.task.UpdateCreateTaskParams;
 import com.yohann.ocihelper.bean.params.oci.volume.UpdateBootVolumeCfgParams;
 import com.yohann.ocihelper.bean.response.oci.task.CreateTaskRsp;
 import com.yohann.ocihelper.bean.response.oci.cfg.OciCfgDetailsRsp;
@@ -444,6 +446,118 @@ public class OciServiceImpl implements IOciService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void updateCreateTask(UpdateCreateTaskParams params) {
+        // Step 1: load the existing task record
+        OciCreateTask existingTask = createTaskService.getById(params.getTaskId());
+        if (existingTask == null) {
+            throw new OciException(-1, "任务不存在");
+        }
+
+        // Step 2: stop the currently running scheduled future (does NOT delete DB record)
+        stopTask(CommonUtils.CREATE_TASK_PREFIX + params.getTaskId());
+        // Clear the attempt counter so the new task starts from 0
+        TEMP_MAP.remove(CommonUtils.CREATE_COUNTS_PREFIX + params.getTaskId());
+
+        // Step 3: update DB record with new boot attributes, keep the same taskId
+        OciCreateTask updated = new OciCreateTask();
+        updated.setId(params.getTaskId());
+        updated.setOcpus(Float.parseFloat(params.getOcpus()));
+        updated.setMemory(Float.parseFloat(params.getMemory()));
+        updated.setDisk(params.getDisk());
+        updated.setArchitecture(params.getArchitecture());
+        updated.setInterval(params.getInterval());
+        updated.setCreateNumbers(params.getCreateNumbers());
+        updated.setOperationSystem(params.getOperationSystem());
+        updated.setRootPassword(params.getRootPassword());
+        // Reset paused flag so the task is treated as running
+        updated.setPaused(0);
+        createTaskService.updateById(updated);
+
+        // Step 4: re-submit the task to the thread pool with updated settings
+        SysUserDTO sysUserDTO = sysService.getOciUser(existingTask.getUserId());
+        if (StrUtil.isNotBlank(existingTask.getOciRegion())) {
+            sysUserDTO.getOciCfg().setRegion(existingTask.getOciRegion());
+        }
+        sysUserDTO.setTaskId(params.getTaskId());
+        sysUserDTO.setOcpus(Float.parseFloat(params.getOcpus()));
+        sysUserDTO.setMemory(Float.parseFloat(params.getMemory()));
+        sysUserDTO.setDisk(params.getDisk().equals(50) ? null : Long.valueOf(params.getDisk()));
+        sysUserDTO.setArchitecture(params.getArchitecture());
+        sysUserDTO.setInterval(Long.valueOf(params.getInterval()));
+        sysUserDTO.setCreateNumbers(params.getCreateNumbers());
+        sysUserDTO.setOperationSystem(params.getOperationSystem());
+        sysUserDTO.setRootPassword(params.getRootPassword());
+        addTask(CommonUtils.CREATE_TASK_PREFIX + params.getTaskId(),
+                () -> execCreate(sysUserDTO, sysService, instanceService, createTaskService),
+                0, params.getInterval(), TimeUnit.SECONDS);
+
+        log.info("[Update Task] task [{}] updated and re-submitted with new settings", params.getTaskId());
+    }
+
+    @Override
+    public void updateCreateTaskBatch(UpdateCreateTaskBatchParams params) {
+        List<String> taskIds = params.getTaskIds();
+        for (int i = 0; i < taskIds.size(); i++) {
+            final String taskId = taskIds.get(i);
+            final long delaySeconds = (long) i * 5;
+
+            // Load existing task to obtain userId and region
+            OciCreateTask existingTask = createTaskService.getById(taskId);
+            if (existingTask == null) {
+                log.warn("[Batch Update Task] task [{}] not found, skipping", taskId);
+                continue;
+            }
+
+            // Stop the currently running scheduled future
+            stopTask(CommonUtils.CREATE_TASK_PREFIX + taskId);
+            // Clear the attempt counter so the new task starts from 0
+            TEMP_MAP.remove(CommonUtils.CREATE_COUNTS_PREFIX + taskId);
+
+            // Update DB record with new settings
+            OciCreateTask updated = new OciCreateTask();
+            updated.setId(taskId);
+            updated.setOcpus(Float.parseFloat(params.getOcpus()));
+            updated.setMemory(Float.parseFloat(params.getMemory()));
+            updated.setDisk(params.getDisk());
+            updated.setArchitecture(params.getArchitecture());
+            updated.setInterval(params.getInterval());
+            updated.setCreateNumbers(params.getCreateNumbers());
+            updated.setOperationSystem(params.getOperationSystem());
+            updated.setRootPassword(params.getRootPassword());
+            // Reset paused flag so the task is treated as running
+            updated.setPaused(0);
+            createTaskService.updateById(updated);
+
+            // Re-submit with a staggered delay to avoid bursting the OCI API
+            final OciCreateTask finalExisting = existingTask;
+            CREATE_INSTANCE_POOL.schedule(() -> {
+                try {
+                    SysUserDTO sysUserDTO = sysService.getOciUser(finalExisting.getUserId());
+                    if (StrUtil.isNotBlank(finalExisting.getOciRegion())) {
+                        sysUserDTO.getOciCfg().setRegion(finalExisting.getOciRegion());
+                    }
+                    sysUserDTO.setTaskId(taskId);
+                    sysUserDTO.setOcpus(Float.parseFloat(params.getOcpus()));
+                    sysUserDTO.setMemory(Float.parseFloat(params.getMemory()));
+                    sysUserDTO.setDisk(params.getDisk().equals(50) ? null : Long.valueOf(params.getDisk()));
+                    sysUserDTO.setArchitecture(params.getArchitecture());
+                    sysUserDTO.setInterval(Long.valueOf(params.getInterval()));
+                    sysUserDTO.setCreateNumbers(params.getCreateNumbers());
+                    sysUserDTO.setOperationSystem(params.getOperationSystem());
+                    sysUserDTO.setRootPassword(params.getRootPassword());
+                    addTask(CommonUtils.CREATE_TASK_PREFIX + taskId,
+                            () -> execCreate(sysUserDTO, sysService, instanceService, createTaskService),
+                            0, params.getInterval(), TimeUnit.SECONDS);
+                    log.info("[Batch Update Task] task [{}] re-submitted with {}s delay", taskId, delaySeconds);
+                } catch (Exception e) {
+                    log.error("[Batch Update Task] failed to re-submit task [{}]: {}", taskId, e.getMessage());
+                }
+            }, delaySeconds, TimeUnit.SECONDS);
+        }
+        log.info("[Batch Update Task] {} tasks queued for update", taskIds.size());
+    }
+
+    @Override
     public void pauseCreateBatch(PauseCreateParams params) {
         // Cancel the scheduled futures but keep the DB records with paused=1
         params.getIdList().forEach(taskId -> stopTask(CommonUtils.CREATE_TASK_PREFIX + taskId));

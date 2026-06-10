@@ -32,6 +32,8 @@ public class CreateTaskRsp {
 
     private String operationSystem;
 
+    private String rootPassword;
+
     private String createTime;
 
     private String counts;

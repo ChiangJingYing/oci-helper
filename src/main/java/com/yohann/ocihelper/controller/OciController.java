@@ -11,6 +11,8 @@ import com.yohann.ocihelper.bean.params.oci.task.CreateTaskPageParams;
 import com.yohann.ocihelper.bean.params.oci.task.PauseCreateParams;
 import com.yohann.ocihelper.bean.params.oci.task.StopChangeIpParams;
 import com.yohann.ocihelper.bean.params.oci.task.StopCreateParams;
+import com.yohann.ocihelper.bean.params.oci.task.UpdateCreateTaskBatchParams;
+import com.yohann.ocihelper.bean.params.oci.task.UpdateCreateTaskParams;
 import com.yohann.ocihelper.bean.params.oci.volume.UpdateBootVolumeCfgParams;
 import com.yohann.ocihelper.bean.response.oci.task.CreateTaskRsp;
 import com.yohann.ocihelper.bean.response.oci.cfg.OciCfgDetailsRsp;
@@ -117,10 +119,22 @@ public class OciController {
         return ResponseData.successData(ociService.createTaskPage(params), "获取开机任务列表成功");
     }
 
-    @PostMapping(path = "/stopCreateBatch")
+        @PostMapping(path = "/stopCreateBatch")
     public ResponseData<Void> stopCreateBatch(@Validated @RequestBody IdListParams params) {
         ociService.stopCreateBatch(params);
         return ResponseData.successData("停止开机任务成功");
+    }
+
+        @PostMapping(path = "/updateCreateTask")
+    public ResponseData<Void> updateCreateTask(@Validated @RequestBody UpdateCreateTaskParams params) {
+        ociService.updateCreateTask(params);
+        return ResponseData.successData("修改开机任务成功");
+    }
+
+    @PostMapping(path = "/updateCreateTaskBatch")
+    public ResponseData<Void> updateCreateTaskBatch(@Validated @RequestBody UpdateCreateTaskBatchParams params) {
+        virtualExecutor.execute(() -> ociService.updateCreateTaskBatch(params));
+        return ResponseData.successData("批量修改开机任务已提交，正在错开重启中…");
     }
 
     @PostMapping(path = "/pauseCreateBatch")
