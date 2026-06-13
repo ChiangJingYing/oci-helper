@@ -8,6 +8,7 @@ MAIN_IMAGE="ghcr.io/chiangjingying/oci-helper:master"
 WATCHER_IMAGE="ghcr.io/yohann0617/oci-helper-watcher:main"
 WEBSOCKIFY_IMAGE="ghcr.io/yohann0617/oci-helper-websockify:master"
 DEPLOY_RELEASE_BASE="https://github.com/Yohann0617/oci-helper/releases/download/deploy"
+SOURCE_TARBALL_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/master"
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -70,6 +71,25 @@ networks:
 EOF
 }
 
+build_main_image_locally() {
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "${tmpdir}"' RETURN
+
+  echo "主镜像拉取失败，改为从 ${REPO_OWNER}/${REPO_NAME}@master 本地构建 ..."
+  curl -fsSL "${SOURCE_TARBALL_URL}" -o "${tmpdir}/source.tar.gz"
+  tar -xzf "${tmpdir}/source.tar.gz" -C "${tmpdir}"
+
+  local source_dir
+  source_dir="$(find "${tmpdir}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+  if [ -z "${source_dir}" ]; then
+    echo "无法解析源码目录" >&2
+    exit 1
+  fi
+
+  docker build -t "${MAIN_IMAGE}" -f "${source_dir}/Dockerfile" "${source_dir}"
+}
+
 main() {
   need_cmd curl
   need_cmd docker
@@ -91,7 +111,11 @@ main() {
   fi
 
   echo "拉取并启动 ${REPO_OWNER}/${REPO_NAME} ..."
-  "${COMPOSE_CMD[@]}" -f "${APP_DIR}/docker-compose.yml" pull
+  docker pull "${WATCHER_IMAGE}"
+  docker pull "${WEBSOCKIFY_IMAGE}"
+  if ! docker pull "${MAIN_IMAGE}"; then
+    build_main_image_locally
+  fi
   "${COMPOSE_CMD[@]}" -f "${APP_DIR}/docker-compose.yml" up -d
 
   cat <<MSG
