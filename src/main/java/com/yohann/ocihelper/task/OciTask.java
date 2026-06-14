@@ -256,21 +256,26 @@ public class OciTask implements ApplicationRunner {
     }
 
     private void saveVersion() {
-        virtualExecutor.execute(() -> {
-            String latestVersion = CommonUtils.getLatestVersion();
-            OciKv oldVersion = kvService.getOne(new LambdaQueryWrapper<OciKv>()
-                    .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
-                    .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode()));
-            if (null == oldVersion) {
-                kvService.save(OciKv.builder()
-                        .id(IdUtil.getSnowflake().nextIdStr())
-                        .code(SysCfgEnum.SYS_INFO_VERSION.getCode())
-                        .type(SysCfgTypeEnum.SYS_INFO.getCode())
-                        .value(latestVersion)
-                        .build());
-            }
-        });
-
+        String latestVersion = CommonUtils.getLatestVersion();
+        if (StrUtil.isBlank(latestVersion)) {
+            return;
+        }
+        OciKv oldVersion = kvService.getOne(new LambdaQueryWrapper<OciKv>()
+                .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
+                .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode()));
+        if (null == oldVersion) {
+            kvService.save(OciKv.builder()
+                    .id(IdUtil.getSnowflake().nextIdStr())
+                    .code(SysCfgEnum.SYS_INFO_VERSION.getCode())
+                    .type(SysCfgTypeEnum.SYS_INFO.getCode())
+                    .value(latestVersion)
+                    .build());
+            return;
+        }
+        if (!latestVersion.equals(oldVersion.getValue())) {
+            oldVersion.setValue(latestVersion);
+            kvService.updateById(oldVersion);
+        }
     }
 
     private void startInform() {
